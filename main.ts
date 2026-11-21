@@ -46,17 +46,23 @@
 //
 // The spread is a predictive standard deviation on the logit scale, built
 // from three honest sources of error and combined in quadrature:
-//   - a refresh/dilution shock floor (0.65 logit): the next refresh can
+//   - a refresh/dilution shock floor (0.90 logit): the next refresh can
 //     move every rate at once, as launch night showed, when the tracked
 //     count jumped 6x and every rate but the one at 100% fell; even a
-//     short horizon is not safe from one such refresh;
+//     short horizon is not safe from one such refresh. The floor was
+//     0.65 in the first submitted version; the server's practice score
+//     for that version (loss 1.07, 90% coverage 0.073) showed the bands
+//     far too narrow when a refresh the history could not see moved
+//     every rate by ~1.8 logit at once, so the floor is raised to 0.90
+//     and the total is floored at 1.0: no trophy's rate a week out is
+//     known to better than about 1 logit;
 //   - a random-walk term, 0.5 * sqrt(horizon in days), the house baseline's
 //     own spread rate, which grows with the horizon;
 //   - the trend fit's prediction error for that trophy (residual scatter
 //     times the leverage of extrapolating to the target), so trophies whose
 //     history is volatile or whose target is far outside the observed
 //     log-time range get wider bands.
-// The total is floored at 0.6 and capped at 1.9 logit. Trophies that have
+// The total is floored at 1.0 and capped at 2.2 logit. Trophies that have
 // never been earned (rate 0.00 throughout) get at least 1.3, because their
 // lift-off, if it comes, is a jump from zero; the one trophy pinned at
 // 100% throughout gets 0.45, because every refresh so far has left it at
@@ -384,8 +390,8 @@ function forecastCase(c: Case): { trophies: Array<{ id: number; q: number[] }> }
 
     // --- Spread: refresh shock + random walk + trend prediction error. ---
     const rw = 0.5 * Math.sqrt(horizonDays);
-    let sigma = Math.sqrt(0.65 * 0.65 + rw * rw + Math.min(predVar, 1.44));
-    sigma = clamp(sigma, 0.75, 1.9);
+    let sigma = Math.sqrt(0.9 * 0.9 + rw * rw + Math.min(predVar, 1.44));
+    sigma = clamp(sigma, 1.0, 2.2);
     if (neverEarned) sigma = Math.max(sigma, 1.3);
     if (pinned100) sigma = 0.45;
 
